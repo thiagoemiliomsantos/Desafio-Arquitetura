@@ -1,0 +1,88 @@
+services:
+  postgres-entries:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: entries
+      POSTGRES_USER: cashflow
+      POSTGRES_PASSWORD: cashflow123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-entries:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cashflow -d entries"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-consolidation:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: consolidation
+      POSTGRES_USER: cashflow
+      POSTGRES_PASSWORD: cashflow123
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata-consolidation:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cashflow -d consolidation"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  entry-service:
+    build:
+      context: src
+      dockerfile: CashFlow.EntryService/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__EntryDb: "Host=postgres-entries;Database=entries;Username=cashflow;Password=cashflow123"
+      RabbitMQ__Host: rabbitmq
+      Jwt__Key: "super-secret-key-for-dev-only-change-in-prod"
+      Jwt__Issuer: "cashflow-entry"
+      Jwt__Audience: "cashflow-clients"
+    depends_on:
+      postgres-entries:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  consolidation-service:
+    build:
+      context: src
+      dockerfile: CashFlow.ConsolidationService/Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ConsolidationDb: "Host=postgres-consolidation;Database=consolidation;Username=cashflow;Password=cashflow123"
+      RabbitMQ__Host: rabbitmq
+      Jwt__Key: "super-secret-key-for-dev-only-change-in-prod"
+      Jwt__Issuer: "cashflow-entry"
+      Jwt__Audience: "cashflow-clients"
+    depends_on:
+      postgres-consolidation:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  pgdata-entries:
+  pgdata-consolidation:
