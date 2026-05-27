@@ -10,15 +10,15 @@ Uma empresa precisa de um sistema para controlar o fluxo de caixa diário — re
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         API Gateway                          │
-│              (Rate Limiting • Auth JWT • Routing)            │
+│                         API Gateway                         │
+│              (Rate Limiting • Auth JWT • Routing)           │
 └────────────────┬────────────────────┬───────────────────────┘
                  │                    │
     ┌────────────▼──────────┐  ┌──────▼──────────────────┐
-    │     EntryService      │  │   ConsolidationService   │
-    │  POST /api/entries│  │  GET /api/consolidation    │
-    │  GET  /api/entries│  │  (saldo diário)          │
-    │                       │  │                          │
+    │     EntryService      │  │   ConsolidationService  │
+    │  POST /api/entries    │  │  GET /api/consolidation │
+    │  GET  /api/entries    │  │  (saldo diário)         │
+    │                       │  │                         │
     │  ┌─────────────────┐  │  │  ┌───────────────────┐  │
     │  │  PostgreSQL DB  │  │  │  │   PostgreSQL DB   │  │
     │  │  (entries)      │  │  │  │  (consolidation)  │  │
@@ -26,7 +26,7 @@ Uma empresa precisa de um sistema para controlar o fluxo de caixa diário — re
     │  ┌─────────────────┐  │  │  ┌───────────────────┐  │
     │  │  Outbox Table   │──┼──┼─►│  RabbitMQ         │  │
     │  └─────────────────┘  │  │  │  Consumer         │  │
-    └───────────────────────┘  └──────────────────────────┘
+    └───────────────────────┘  └─────────────────────────┘
                  │                         ▲
                  └──── RabbitMQ ───────────┘
                     (EntryCreated event)
