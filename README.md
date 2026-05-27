@@ -107,3 +107,56 @@ Objetivo: ≥ 80% nos handlers de Application. Rodar com:
 ```bash
 dotnet test src/CashFlow.sln --collect:"XPlat Code Coverage"
 ```
+
+## Configuração de Produção
+
+### Autenticação JWT
+
+| Configuração | Desenvolvimento | Produção |
+|---|---|---|
+| `Jwt:Key` | Valor fixo em `appsettings.json` | Variável de ambiente ou secrets manager¹ |
+| Emissor de tokens | `POST /api/auth/token` (dev only) | IDP externo² |
+| Rotação de chaves | Não aplicável | Rotacionar periodicamente via secrets manager |
+
+¹ AWS Secrets Manager, Azure Key Vault, HashiCorp Vault ou equivalente. A chave deve ter **no mínimo 256 bits** e nunca deve ser versionada em repositório.
+
+² Em produção, remova a dependência do endpoint `/api/auth/token` (já desabilitado fora de `IsDevelopment()`) e configure o `JwtBearer` com `Authority` apontando para o IDP:
+
+```csharp
+opt.Authority = "https://seu-idp.exemplo.com";
+opt.Audience  = "cashflow-clients";
+// Remova IssuerSigningKey — o middleware buscará as chaves públicas do IDP via OIDC discovery
+```
+
+Provedores recomendados: **Keycloak** (self-hosted), **Azure AD B2C**, **Auth0**.
+
+---
+
+### Observabilidade (OpenTelemetry)
+
+Em desenvolvimento os traces são exportados para o console. Em produção, substitua o exporter em `TelemetryExtensions.cs`:
+
+**1. Adicione o pacote OTLP:**
+```bash
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+```
+
+**2. Troque `AddConsoleExporter()` por `AddOtlpExporter()`:**
+```csharp
+.WithTracing(tracing => tracing
+    .AddAspNetCoreInstrumentation()
+    .AddHttpClientInstrumentation()
+    .AddOtlpExporter(opts =>
+        opts.Endpoint = new Uri(configuration["Otel:Endpoint"]!)))
+```
+
+**3. Configure a variável de ambiente:**
+```yaml
+# docker-compose (produção)
+OTEL__ENDPOINT: "http://jaeger:4317"   # Jaeger
+# ou
+OTEL__ENDPOINT: "http://tempo:4317"    # Grafana Tempo
+# ou use o endpoint OTLP do Datadog / New Relic / Dynatrace
+```
+
+Backends recomendados: **Jaeger** ou **Grafana Tempo** (self-hosted), **Datadog**, **New Relic**.
