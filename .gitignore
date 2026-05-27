@@ -1,0 +1,40 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## Publicação
+out/
+publish/
+
+## Logs e temporários
+logs/
+*.log
+*.tmp
+
+## Configuração local (secrets)
+appsettings.Local.json
+appsettings.Development.local.json
+secrets.json
+
+## Cobertura de testes
+coverage/
+TestResults/
+*.coverage
+*.coveragexml
+
+## Rider / JetBrains
+.idea/
+
+## VS Code
+.vscode/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## graphify (saída gerada)
+graphify-out/
