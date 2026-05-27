@@ -8,6 +8,7 @@ builder.Services.ConfigureHttpJsonOptions(opt =>
     opt.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.AddSerilog();
+builder.Services.AddTelemetry();
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddHandlers();
 builder.Services.AddRabbitMq(builder.Configuration);

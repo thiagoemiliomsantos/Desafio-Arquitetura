@@ -4,6 +4,7 @@ using CashFlow.ConsolidationService.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddSerilog();
+builder.Services.AddTelemetry();
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddHandlers();
 builder.Services.AddRabbitMq(builder.Configuration);

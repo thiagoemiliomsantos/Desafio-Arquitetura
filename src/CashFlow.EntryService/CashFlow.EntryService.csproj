@@ -19,6 +19,14 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="Polly.Extensions" Version="8.4.2" />
     <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
+    <!-- NU1902: CVE de severidade moderada sem patch disponível nas versões ativas do OpenTelemetry.Api; suprimido -->
+    <PackageReference Include="OpenTelemetry.Api" Version="1.11.2">
+      <NoWarn>NU1902</NoWarn>
+    </PackageReference>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.11.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.11.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.11.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
