@@ -14,6 +14,7 @@ builder.Services.AddHandlers();
 builder.Services.AddRabbitMq(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddDefaultRateLimiter();
+builder.Services.AddRequestTimeouts();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerWithJwtBearer("CashFlow.EntryService.xml");
 
@@ -27,6 +28,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRateLimiter();
+app.UseRequestTimeouts();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapEntryEndpoints();

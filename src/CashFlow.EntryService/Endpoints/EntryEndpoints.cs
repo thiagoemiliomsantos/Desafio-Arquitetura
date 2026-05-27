@@ -66,7 +66,8 @@ public static class EntryEndpoints
                     Status = 400,
                     Detail = "O valor do lançamento deve ser positivo."
                 })
-            ]);
+            ])
+        .WithRequestTimeout(TimeSpan.FromSeconds(2));
 
         group.MapGet("/", async (
             DateOnly date,
