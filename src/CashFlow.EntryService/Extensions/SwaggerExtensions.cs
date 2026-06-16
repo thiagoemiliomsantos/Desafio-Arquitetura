@@ -16,6 +16,27 @@ internal sealed class SwaggerDocMetadata
 }
 
 /// <summary>
+/// Filtro Swashbuckle que corrige o schema de query params chamados <c>date</c>:
+/// aplica <c>format: date</c> e um exemplo no padrão yyyy-MM-dd.
+/// Necessário porque Minimal API infere o tipo como <c>string</c> quando o parâmetro
+/// é declarado como <c>string?</c> para permitir parse manual e retorno de 422.
+/// </summary>
+internal sealed class DateQueryParamFormatFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        foreach (var param in operation.Parameters
+            .Where(p => p.In == ParameterLocation.Query &&
+                        p.Name.Equals("date", StringComparison.OrdinalIgnoreCase)))
+        {
+            param.Schema.Format = "date";
+            param.Schema.Example ??= new OpenApiString("2025-05-25");
+            param.Description ??= "Data no formato yyyy-MM-dd";
+        }
+    }
+}
+
+/// <summary>
 /// Filtro Swashbuckle que aplica exemplos de request/response registrados via
 /// <see cref="SwaggerRouteHandlerBuilderExtensions.WithSwaggerDoc"/> ao documento OpenAPI.
 /// Injeta o exemplo em todos os content-types do status (json e problem+json).
@@ -130,6 +151,7 @@ public static class SwaggerServiceExtensions
     {
         services.AddSwaggerGen(options =>
         {
+            options.OperationFilter<DateQueryParamFormatFilter>();
             options.OperationFilter<SwaggerExamplesFilter>();
 
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
