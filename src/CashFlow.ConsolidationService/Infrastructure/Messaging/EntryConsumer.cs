@@ -1,11 +1,9 @@
-using CashFlow.ConsolidationService.Domain.Entities;
-using CashFlow.ConsolidationService.Domain.Repositories;
+using CashFlow.ConsolidationService.Application.Commands;
 using CashFlow.SharedKernel.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Polly;
-using Polly.CircuitBreaker;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
@@ -15,8 +13,8 @@ namespace CashFlow.ConsolidationService.Infrastructure.Messaging;
 
 /// <summary>
 /// Background service que consome eventos de lançamento do RabbitMQ e atualiza o consolidado diário.
-/// Implementa circuit breaker e retry via Polly, além de idempotência por <c>EventId</c>.
-/// A conexão e o canal são criados assincronamente no startup e fechados ao parar o host.
+/// A lógica de negócio e idempotência são delegadas ao <see cref="IEntryEventProcessor"/>.
+/// Circuit breaker e retry são gerenciados por <see cref="ConsumerPolicies"/>.
 /// </summary>
 public class EntryConsumer(
     IConnectionFactory connectionFactory,
@@ -24,22 +22,7 @@ public class EntryConsumer(
     ILogger<EntryConsumer> logger
 ) : BackgroundService
 {
-    private static readonly ResiliencePipeline _pipeline = new ResiliencePipelineBuilder()
-        .AddCircuitBreaker(new CircuitBreakerStrategyOptions
-        {
-            FailureRatio = 0.5,
-            MinimumThroughput = 5,
-            SamplingDuration = TimeSpan.FromSeconds(30),
-            BreakDuration = TimeSpan.FromSeconds(30)
-        })
-        .AddRetry(new Polly.Retry.RetryStrategyOptions
-        {
-            MaxRetryAttempts = 3,
-            Delay = TimeSpan.FromSeconds(1),
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
-        })
-        .Build();
+    private static readonly ResiliencePipeline _pipeline = ConsumerPolicies.Build();
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,27 +54,10 @@ public class EntryConsumer(
                     ?? throw new InvalidOperationException("Evento inválido.");
 
                 using var scope = scopeFactory.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<IDailySummaryRepository>();
+                var processor = scope.ServiceProvider.GetRequiredService<IEntryEventProcessor>();
 
-                if (await repo.IsEventAlreadyProcessedAsync(entryEvent.EventId, ct))
-                {
-                    logger.LogInformation("Evento {EventId} já processado (idempotência).", entryEvent.EventId);
-                    await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-                    return;
-                }
-
-                var summary = await repo.GetByDateAsync(entryEvent.Date, ct)
-                    ?? DailySummary.Create(entryEvent.Date);
-
-                summary.ApplyEntry(entryEvent.Type, entryEvent.Amount);
-
-                await repo.UpsertAsync(summary, ct);
-                await repo.RegisterProcessedEventAsync(entryEvent.EventId, ct);
-                await repo.SaveChangesAsync(ct);
-
+                await processor.ProcessAsync(entryEvent, ct);
                 await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-                logger.LogInformation("Evento {EventId} processado — {Date} saldo: {Balance}",
-                    entryEvent.EventId, entryEvent.Date, summary.Balance);
             }, stoppingToken);
         }
         catch (Exception ex)
