@@ -26,6 +26,9 @@ public static class DatabaseExtensions
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EntryDbContext>();
-        await db.Database.MigrateAsync();
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            await db.Database.EnsureCreatedAsync();
+        else
+            await db.Database.MigrateAsync();
     }
 }
