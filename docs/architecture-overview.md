@@ -67,7 +67,7 @@ Response: { date, totalCreditos, totalDebitos, saldo }
 - **Retry:** 3 tentativas com backoff exponencial (Polly) para publicação no Outbox Worker
 
 ### ConsolidationService
-- **Circuit Breaker (Polly):** após 5 falhas consecutivas → abre por 30s
+- **Circuit Breaker (Polly):** abre quando ≥ 50% das requisições falham em uma janela de 30s (mínimo de 5 tentativas); permanece aberto por 30s
 - **Retry:** 3 tentativas com jitter para o consumer do RabbitMQ
 - **Idempotência:** cada evento carrega `EventId` (Guid); consumer verifica antes de processar
 
@@ -77,7 +77,6 @@ Response: { date, totalCreditos, totalDebitos, saldo }
 
 - JWT Bearer em todos os endpoints (`.RequireAuthorization()` no Minimal API)
 - Validação de `audience`, `issuer` e `lifetime`
-- Sem dados sensíveis em logs — Serilog com destructuring mascarado
 - Rate limiting por IP para mitigar DDoS simples
 
 ---
@@ -86,14 +85,14 @@ Response: { date, totalCreditos, totalDebitos, saldo }
 
 | Sinal | Ferramenta | Destino |
 |-------|-----------|---------|
-| Traces | OpenTelemetry SDK | Jaeger (local) / OTLP (prod) |
-| Logs | Serilog | Console estruturado + arquivo rotativo |
+| Traces | OpenTelemetry SDK | Console (dev) / OTLP (prod — Jaeger, Grafana Tempo, Datadog) |
+| Logs | Serilog | Console estruturado (arquivo rotativo: futuro) |
 | Métricas | OpenTelemetry Metrics | Prometheus (futuro) |
 
-Campos obrigatórios em cada log de request:
-- `TraceId`, `SpanId`
-- `UserId` (do claim JWT)
-- `Endpoint`, `StatusCode`, `DurationMs`
+Campos emitidos em cada log de request (via `UseSerilogRequestLogging`):
+- `TraceId`, `SpanId` — enriquecidos automaticamente da `Activity` corrente
+- `UserId` — extraído do claim JWT (`ClaimTypes.Name`)
+- `RequestMethod`, `RequestPath`, `StatusCode`, `Elapsed` (ms)
 
 ---
 

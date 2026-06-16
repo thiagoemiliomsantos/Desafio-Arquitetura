@@ -59,9 +59,7 @@ Mudanças aqui devem ser rastreáveis a um requisito funcional ou não-funcional
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "type": "Debit",
   "amount": 150.00,
-  "description": "Pagamento fornecedor",
-  "date": "2026-06-03",
-  "createdAt": "2026-06-03T14:30:00Z"
+  "date": "2026-06-03"
 }
 ```
 
@@ -122,7 +120,8 @@ Mudanças aqui devem ser rastreáveis a um requisito funcional ou não-funcional
   "date": "2026-06-03",
   "totalCredits": 1500.00,
   "totalDebits": 300.00,
-  "balance": 1200.00
+  "balance": 1200.00,
+  "updatedAt": "2026-06-03T17:32:11Z"
 }
 ```
 
@@ -141,16 +140,18 @@ Mudanças aqui devem ser rastreáveis a um requisito funcional ou não-funcional
 ## Contrato de evento (RabbitMQ)
 
 **Exchange:** `cashflow.entries`  
-**Tipo:** `fanout`  
+**Tipo:** `topic`  
+**Routing key:** nome do tipo do evento (ex: `EntryCreatedEvent`)  
 **Durabilidade:** durable  
 **Evento:** `EntryCreatedEvent`
 
 ```csharp
 public record EntryCreatedEvent(
-    Guid     EventId,     // identificador único do evento (usado para idempotência)
+    Guid     EventId,      // identificador único do evento (usado para idempotência)
     Guid     EntryId,
-    string   Type,        // "Debit" | "Credit"
+    string   Type,         // "Debit" | "Credit"
     decimal  Amount,
+    string?  Description,
     DateOnly Date,
     DateTime OccurredAt
 );
@@ -231,7 +232,7 @@ ConsolidationService [consumer]
   → Se já processado: descarta
   → DailySummaryRepository.UpsertAsync(date, amount, type)
   → INSERT INTO processed_events(EventId)
-  [Circuit Breaker: 5 falhas → aberto 30 s]
+  [Circuit Breaker: ≥ 50% falhas em 30 s → aberto 30 s]
 ```
 
 ---
@@ -288,7 +289,7 @@ app.MapPost("/api/entries", async (
 | CQRS sem MediatR | Testabilidade, NF-07 | ADR-006 |
 | Minimal API | Simplicidade, ADR-004 | ADR-004 |
 | Rate Limiting (50/10 s) | NF-01, F-01-AC-07 | ADR-010 |
-| Circuit Breaker (5 falhas, 30 s) | F-04-AC-03, NF-04 | ADR-009 |
+| Circuit Breaker (≥ 50% falhas / 30 s, abre 30 s) | F-04-AC-03, NF-04 | ADR-009 |
 | Idempotência por EventId | F-04-AC-01 | ADR-002 |
 | Validação em duas camadas | F-01-AC-02, F-01-AC-03 | ADR-013 |
 | Result Pattern | F-01-AC-03 (400 vs 422) | ADR-014 |

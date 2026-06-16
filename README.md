@@ -52,6 +52,8 @@ Uma empresa precisa de um sistema para controlar o fluxo de caixa diário — re
 - **Segurança:** JWT obrigatório em todos os endpoints, rate limiting por IP
 - **Observabilidade:** traces distribuídos (OpenTelemetry), logs estruturados (Serilog)
 
+> **Rate limiting vs. throughput:** o rate limiter está configurado em 50 req/10 s **por IP** como proteção contra abuso (DoS). A capacidade total de 50 req/s é atingida com múltiplos clientes simultâneos e/ou escalonando horizontalmente os serviços (`docker compose up --scale entry-service=N`). Os dois conceitos são independentes: o rate limit protege cada IP individualmente; o throughput agrega todas as instâncias.
+
 ## Como rodar
 
 ```bash

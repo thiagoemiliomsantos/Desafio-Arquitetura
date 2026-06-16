@@ -113,7 +113,7 @@ Uma empresa precisa controlar o fluxo de caixa diário: registrar débitos e cr�
 |---|---|---|
 | F-04-AC-01 | Evento com `EventId` já presente em `processed_events` é descartado sem reprocessamento | Teste de integração |
 | F-04-AC-02 | Falha na publicação aciona retry com backoff exponencial (máx. 3 tentativas) | Teste unitário (Polly policy) |
-| F-04-AC-03 | Após 5 falhas consecutivas no consumer, o Circuit Breaker abre por 30 s | Teste unitário (Polly policy) |
+| F-04-AC-03 | Quando ≥ 50% das chamadas falham em uma janela de 30 s (mínimo 5 tentativas), o Circuit Breaker abre por 30 s | Teste unitário (Polly policy) |
 | F-04-AC-04 | Perda de lançamentos ≤ 5% mesmo com broker temporariamente indisponível | Teste de resiliência |
 
 ---
