@@ -18,21 +18,18 @@ public class OutboxPublisher(
     ILogger<OutboxPublisher> logger
 ) : BackgroundService
 {
-    private static readonly ResiliencePipeline _retry = new ResiliencePipelineBuilder()
-        .AddRetry(new Polly.Retry.RetryStrategyOptions
-        {
-            MaxRetryAttempts = 3,
-            Delay = TimeSpan.FromSeconds(2),
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
-        })
-        .Build();
+    private static readonly ResiliencePipeline _retry = PublishingPolicies.Build();
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var connection = await connectionFactory.CreateConnectionAsync(stoppingToken);
         using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+
+        // Declara o exchange aqui também: a declaração é idempotente no RabbitMQ,
+        // mas garante que o exchange existe antes de qualquer publicação, independente
+        // da ordem de startup dos serviços.
+        await channel.ExchangeDeclareAsync("cashflow.entries", ExchangeType.Topic, durable: true, cancellationToken: stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
