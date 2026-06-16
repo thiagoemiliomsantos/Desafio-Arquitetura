@@ -70,14 +70,21 @@ public static class EntryEndpoints
         .WithRequestTimeout(TimeSpan.FromSeconds(2));
 
         group.MapGet("/", async (
-            DateOnly date,
+            string? date,
             IQueryHandler<ListEntriesQuery, IReadOnlyList<EntryDto>> handler,
             CancellationToken ct) =>
         {
-            var result = await handler.HandleAsync(new ListEntriesQuery(date), ct);
+            if (date is null || !DateOnly.TryParseExact(date, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                return Results.Problem(
+                    title: "Data inválida.",
+                    detail: "Informe a data no formato yyyy-MM-dd.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+
+            var result = await handler.HandleAsync(new ListEntriesQuery(parsedDate), ct);
             return Results.Ok(result);
         })
         .Produces<IReadOnlyList<EntryDto>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
         .WithSwaggerDoc(
             summary: "Lista os lançamentos por data (formato: yyyy-MM-dd)",
             responseExamples:

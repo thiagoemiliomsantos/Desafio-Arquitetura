@@ -17,16 +17,23 @@ public static class DailySummaryEndpoints
             .RequireRateLimiting("default");
 
         group.MapGet("/", async (
-            DateOnly date,
+            string? date,
             IQueryHandler<GetDailySummaryQuery, DailySummaryDto?> handler,
             CancellationToken ct) =>
         {
-            var result = await handler.HandleAsync(new GetDailySummaryQuery(date), ct);
+            if (date is null || !DateOnly.TryParseExact(date, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                return Results.Problem(
+                    title: "Data inválida.",
+                    detail: "Informe a data no formato yyyy-MM-dd.",
+                    statusCode: StatusCodes.Status422UnprocessableEntity);
+
+            var result = await handler.HandleAsync(new GetDailySummaryQuery(parsedDate), ct);
             return result is null
-                ? Results.Problem(title: "Sem dados", detail: $"Nenhum consolidado para {date:yyyy-MM-dd}.", statusCode: 404)
+                ? Results.Problem(title: "Sem dados", detail: $"Nenhum consolidado para {parsedDate:yyyy-MM-dd}.", statusCode: 404)
                 : Results.Ok(result);
         })
         .Produces<DailySummaryDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .WithSwaggerDoc(
             summary: "Retorna o consolidado diário de uma data (formato: yyyy-MM-dd)",
@@ -41,7 +48,8 @@ public static class DailySummaryEndpoints
                     Status = 404,
                     Detail = "Nenhum consolidado para 2025-05-25."
                 })
-            ]);
+            ])
+        .WithRequestTimeout(TimeSpan.FromSeconds(5));
 
         return app;
     }
